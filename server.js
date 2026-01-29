@@ -93,3 +93,67 @@ app.get("/auth/callback", async (req, res) => {
 });
 
 app.listen(PORT, () => console.log("Server running on port " + PORT));
+const express = require("express");
+const axios = require("axios");
+
+const app = express();
+
+const PORT = process.env.PORT || 3000;
+
+// ====== بيانات فيسبوك ======
+const FACEBOOK_APP_ID = process.env.FACEBOOK_APP_ID;
+const FACEBOOK_APP_SECRET = process.env.FACEBOOK_APP_SECRET;
+const CALLBACK_URL = "https://video-backend-dr1f.onrender.com/auth/callback";
+
+// ====== الصفحة الرئيسية ======
+app.get("/", (req, res) => {
+  res.send("Backend is running ✅");
+});
+
+// ====== تسجيل الدخول ======
+app.get("/auth/login", (req, res) => {
+  const fbLoginUrl =
+    `https://www.facebook.com/v18.0/dialog/oauth` +
+    `?client_id=${FACEBOOK_APP_ID}` +
+    `&redirect_uri=${CALLBACK_URL}` +
+    `&scope=public_profile,email`;
+
+  res.redirect(fbLoginUrl);
+});
+
+// ====== Callback ======
+app.get("/auth/callback", async (req, res) => {
+  const code = req.query.code;
+
+  if (!code) {
+    return res.send("No code returned ❌");
+  }
+
+  try {
+    const tokenRes = await axios.get(
+      "https://graph.facebook.com/v18.0/oauth/access_token",
+      {
+        params: {
+          client_id: FACEBOOK_APP_ID,
+          client_secret: FACEBOOK_APP_SECRET,
+          redirect_uri: CALLBACK_URL,
+          code,
+        },
+      }
+    );
+
+    const accessToken = tokenRes.data.access_token;
+
+    res.send({
+      success: true,
+      accessToken,
+    });
+  } catch (err) {
+    res.status(500).send("OAuth error ❌");
+  }
+});
+
+// ====== تشغيل السيرفر ======
+app.listen(PORT, () => {
+  console.log("Server running on port", PORT);
+});
