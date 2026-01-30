@@ -1,3 +1,5 @@
+import jwt from "jsonwebtoken";
+
 const express = require("express");
 const axios = require("axios");
 
@@ -6,6 +8,8 @@ const PORT = process.env.PORT || 3000;
 
 const APP_ID = process.env.META_APP_ID;
 const APP_SECRET = process.env.META_APP_SECRET;
+const JWT_SECRET = process.env.JWT_SECRET;
+
 const REDIRECT_URI = process.env.META_REDIRECT_URI;
 const GRAPH_VERSION = process.env.GRAPH_VERSION || "v21.0";
 
@@ -69,12 +73,16 @@ app.get("/auth/callback", async (req, res) => {
 // ... after you have fbUser (id, name, email)
 
 const token = jwt.sign(
-  { sub: fbUser.id, name: fbUser.name, email: fbUser.email || null },
-  process.env.JWT_SECRET,
+  {
+    sub: profile.id,
+    name: profile.name,
+    email: profile.email || null
+  },
+  JWT_SECRET,
   { expiresIn: "7d" }
 );
 
-return res.send(`JWT OK ✅\n\n${token}`);
+res.send(`JWT_OK\n\n${token}`);
 
     });
   } catch (e) {
