@@ -1,22 +1,24 @@
-import jwt from "jsonwebtoken";
-
 const express = require("express");
 const axios = require("axios");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// ===== ENV =====
 const APP_ID = process.env.META_APP_ID;
 const APP_SECRET = process.env.META_APP_SECRET;
-const JWT_SECRET = process.env.JWT_SECRET;
-
 const REDIRECT_URI = process.env.META_REDIRECT_URI;
 const GRAPH_VERSION = process.env.GRAPH_VERSION || "v21.0";
 
+// ===== MIDDLEWARE =====
+app.use(express.json());
+
+// ===== ROOT =====
 app.get("/", (req, res) => {
   res.send("Backend is running ✅");
 });
 
+// ===== LOGIN =====
 app.get("/auth/login", (req, res) => {
   if (!APP_ID || !REDIRECT_URI) {
     return res.status(500).send("Missing META_APP_ID or META_REDIRECT_URI");
@@ -34,6 +36,7 @@ app.get("/auth/login", (req, res) => {
   return res.redirect(url);
 });
 
+// ===== CALLBACK =====
 app.get("/auth/callback", async (req, res) => {
   try {
     if (!APP_ID || !APP_SECRET || !REDIRECT_URI) {
@@ -43,12 +46,17 @@ app.get("/auth/callback", async (req, res) => {
     }
 
     if (req.query.error) {
-      return res.status(400).send(`OAuth error: ${req.query.error}`);
+      return res
+        .status(400)
+        .send(`OAuth error: ${req.query.error}`);
     }
 
     const code = req.query.code;
-    if (!code) return res.status(400).send("Missing ?code");
+    if (!code) {
+      return res.status(400).send("Missing code");
+    }
 
+    // === Exchange code for access token ===
     const tokenRes = await axios.get(
       `https://graph.facebook.com/${GRAPH_VERSION}/oauth/access_token`,
       {
@@ -61,42 +69,38 @@ app.get("/auth/callback", async (req, res) => {
       }
     );
 
-    const access_token = tokenRes.data.access_token;
+    const accessToken = tokenRes.data.access_token;
 
-    const meRes = await axios.get(
-      `https://graph.facebook.com/${GRAPH_VERSION}/me`,
-      { params: { access_token, fields: "id,name" } }
+    // === Get user info ===
+    const userRes = await axios.get(
+      `https://graph.facebook.com/me`,
+      {
+        params: {
+          fields: "id,name,email",
+          access_token: accessToken,
+        },
+      }
     );
 
-  const jwt = require("jsonwebtoken");
-
-
-// ... after you have fbUser (id, name, email)
-
-const token = jwt.sign(
-  {
-    sub: profile.id,
-    name: profile.name,
-    email: profile.email || null
-  },
-  JWT_SECRET,
-  { expiresIn: "7d" }
-);
-
-res.send(`JWT_OK\n\n${token}`);
-
+    return res.json({
+      ok: true,
+      user: userRes.data,
     });
-  } catch (e) {
-    const msg = e?.response?.data || e?.message || String(e);
-    return res.status(500).json({ ok: false, error: msg });
+  } catch (err) {
+    console.error("Callback error:", err?.response?.data || err);
+    return res.status(500).send("Callback error");
   }
 });
 
-app.listen(PORT, () => console.log("Server running on port " + PORT));
-app.get('/delete-data', (req, res) => {
-  res.status(200).json({
-    status: 'ok',
-    message: 'User data deletion request received'
+// ===== DELETE DATA (Meta required) =====
+app.post("/delete-data", (req, res) => {
+  return res.json({
+    status: "ok",
+    message: "User data deletion request received",
   });
 });
 
+// ===== START SERVER =====
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
