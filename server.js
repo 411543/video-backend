@@ -76,3 +76,10 @@ app.get("/auth/callback", async (req, res) => {
 });
 
 app.listen(PORT, () => console.log("Server running on port " + PORT));
+app.get('/delete-data', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    message: 'User data deletion request received'
+  });
+});
+
