@@ -68,7 +68,8 @@ app.get("/auth/callback", async (req, res) => {
       { params: { access_token, fields: "id,name" } }
     );
 
-    import jwt from "jsonwebtoken";
+  const jwt = require("jsonwebtoken");
+
 
 // ... after you have fbUser (id, name, email)
 
