@@ -64,10 +64,18 @@ app.get("/auth/callback", async (req, res) => {
       { params: { access_token, fields: "id,name" } }
     );
 
-    return res.json({
-      ok: true,
-      me: meRes.data,
-      access_token,
+    import jwt from "jsonwebtoken";
+
+// ... after you have fbUser (id, name, email)
+
+const token = jwt.sign(
+  { sub: fbUser.id, name: fbUser.name, email: fbUser.email || null },
+  process.env.JWT_SECRET,
+  { expiresIn: "7d" }
+);
+
+return res.send(`JWT OK ✅\n\n${token}`);
+
     });
   } catch (e) {
     const msg = e?.response?.data || e?.message || String(e);
